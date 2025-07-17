@@ -71,6 +71,11 @@
                    class="w-full p-3 bg-gray-700 border-2 border-gray-600 rounded-lg text-lg text-center text-white focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400 transition duration-200"
                    autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" disabled>
         </div>
+
+        <!-- Copyright Footer -->
+        <div class="w-full max-w-2xl text-center mt-4">
+            <p id="copyright" class="text-xs text-gray-500"></p>
+        </div>
     </div>
 
     <!-- Start/Game Over Modal -->
@@ -97,6 +102,7 @@
         const modalText = document.getElementById('modalText');
         const finalScoreEl = document.getElementById('finalScore');
         const startGameBtn = document.getElementById('startGameBtn');
+        const copyrightEl = document.getElementById('copyright');
 
         // --- Game Configuration ---
         const wordList = [
@@ -297,8 +303,8 @@
         let score = 0;
         let level = 1;
         let fallingWords = [];
-        let gameSpeed = 0.8; // ADJUSTED: Slower initial speed
-        let spawnRate = 2200; // ADJUSTED: Slower initial spawn rate
+        let gameSpeed = 0.8; 
+        let spawnRate = 2200; 
         let gameOver = true;
         let gameLoopId;
         let wordSpawnerId;
@@ -308,8 +314,8 @@
 
         function resizeCanvas() {
             const container = document.querySelector('.game-container');
-            const maxWidth = 896; // Corresponds to max-w-2xl
-            const availableWidth = container.clientWidth - 32; // p-4
+            const maxWidth = 896;
+            const availableWidth = container.clientWidth - 32; 
             canvas.width = Math.min(maxWidth, availableWidth);
             canvas.height = window.innerHeight * 0.5;
         }
@@ -322,28 +328,23 @@
             if (gameOver) return;
             const text = getRandomWord();
             const x = Math.random() * (canvas.width - ctx.measureText(text).width - 20) + 10;
-            // ADJUSTED: Less random speed variation
             fallingWords.push({ text, x, y: 0, speed: gameSpeed + Math.random() * 0.2 });
         }
 
         function updateGame() {
             if (gameOver) return;
 
-            // Clear canvas
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Update and draw words
             let wordHitBottom = false;
             for (let i = fallingWords.length - 1; i >= 0; i--) {
                 const word = fallingWords[i];
                 word.y += word.speed;
 
-                // Draw word
-                ctx.fillStyle = '#90cdf4'; // text-blue-300
+                ctx.fillStyle = '#90cdf4'; 
                 ctx.font = '20px Inter';
                 ctx.fillText(word.text, word.x, word.y);
 
-                // Check for collision with bottom
                 if (word.y > canvas.height) {
                     wordHitBottom = true;
                     break;
@@ -364,21 +365,18 @@
             const wordIndex = fallingWords.findIndex(word => word.text === typedValue);
 
             if (wordIndex !== -1) {
-                // Word matched
                 fallingWords.splice(wordIndex, 1);
                 score += 1;
                 scoreEl.textContent = score;
                 inputEl.value = '';
 
-                // Check for level up
                 if (score >= levelUpScore) {
                     level++;
                     levelEl.textContent = level;
-                    gameSpeed += 0.15; // ADJUSTED: Slower speed increase per level
-                    spawnRate = Math.max(700, spawnRate - 100); // ADJUSTED: Slower spawn rate decrease
-                    levelUpScore += (20 + level * 5); // Next level requires more points
+                    gameSpeed += 0.15; 
+                    spawnRate = Math.max(700, spawnRate - 100); 
+                    levelUpScore += (20 + level * 5); 
                     
-                    // Restart spawner with new rate
                     clearInterval(wordSpawnerId);
                     wordSpawnerId = setInterval(spawnWord, spawnRate);
                 }
@@ -386,16 +384,14 @@
         }
 
         function startGame() {
-            // Reset state
             score = 0;
             level = 1;
-            gameSpeed = 0.8; // ADJUSTED: Reset to new initial speed
-            spawnRate = 2200; // ADJUSTED: Reset to new initial spawn rate
+            gameSpeed = 0.8; 
+            spawnRate = 2200; 
             levelUpScore = 20;
             fallingWords = [];
             gameOver = false;
             
-            // Update UI
             scoreEl.textContent = '0';
             levelEl.textContent = '1';
             inputEl.disabled = false;
@@ -403,7 +399,6 @@
             inputEl.focus();
             modal.style.display = 'none';
 
-            // Start game loops
             wordSpawnerId = setInterval(spawnWord, spawnRate);
             gameLoopId = requestAnimationFrame(updateGame);
         }
@@ -415,7 +410,6 @@
             
             inputEl.disabled = true;
 
-            // Show modal
             modalTitle.textContent = 'Game Over!';
             modalText.textContent = 'You did great! Want to try again?';
             finalScoreEl.innerHTML = `Final Score: <span class="text-green-400">${score}</span> | Level: <span class="text-yellow-400">${level}</span>`;
@@ -432,7 +426,9 @@
         // --- Initial Setup ---
         resizeCanvas();
         finalScoreEl.style.display = 'none';
+        copyrightEl.textContent = `© ${new Date().getFullYear()} AmanProjects. All Rights Reserved.`;
 
     </script>
 </body>
 </html>
+

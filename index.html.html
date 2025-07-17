@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Typing Speed Game</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+        }
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+        canvas {
+            background-color: #1a202c; /* bg-gray-800 */
+            border-radius: 0.5rem; /* rounded-lg */
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .modal {
+            display: none; /* Initially hidden */
+            position: fixed;
+            z-index: 50;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.6);
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-content {
+            background-color: #2d3748; /* bg-gray-700 */
+            color: white;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            text-align: center;
+            width: 90%;
+            max-width: 400px;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white">
+
+    <div class="game-container p-4">
+        <!-- Header with Stats -->
+        <div class="w-full max-w-2xl mb-4 p-4 bg-gray-800 rounded-lg shadow-lg flex justify-between items-center">
+            <div>
+                <h1 class="text-xl md:text-2xl font-bold text-cyan-400">Typing Rain</h1>
+                <p class="text-sm text-gray-400">Type the falling words!</p>
+            </div>
+            <div class="text-right">
+                <p class="text-lg">Score: <span id="score" class="font-bold text-green-400">0</span></p>
+                <p class="text-lg">Level: <span id="level" class="font-bold text-yellow-400">1</span></p>
+            </div>
+        </div>
+
+        <!-- Game Canvas -->
+        <canvas id="gameCanvas"></canvas>
+
+        <!-- Typing Input -->
+        <div class="mt-4 w-full max-w-2xl">
+            <input type="text" id="typing-input" placeholder="Start typing here..."
+                   class="w-full p-3 bg-gray-700 border-2 border-gray-600 rounded-lg text-lg text-center text-white focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400 transition duration-200"
+                   autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" disabled>
+        </div>
+    </div>
+
+    <!-- Start/Game Over Modal -->
+    <div id="gameModal" class="modal" style="display: flex;">
+        <div class="modal-content">
+            <h2 id="modalTitle" class="text-3xl font-bold mb-4">Welcome!</h2>
+            <p id="modalText" class="mb-6 text-lg">Type the words as they fall. The game gets faster as you level up. Press Start to begin.</p>
+            <p id="finalScore" class="text-2xl font-bold text-green-400 mb-6"></p>
+            <button id="startGameBtn" class="bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-3 px-8 rounded-lg text-xl transition duration-300 shadow-lg">
+                Start Game
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // --- DOM Elements ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreEl = document.getElementById('score');
+        const levelEl = document.getElementById('level');
+        const inputEl = document.getElementById('typing-input');
+        const modal = document.getElementById('gameModal');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalText = document.getElementById('modalText');
+        const finalScoreEl = document.getElementById('finalScore');
+        const startGameBtn = document.getElementById('startGameBtn');
+
+        // --- Game Configuration ---
+        const wordList = [
+            'ability', 'absorb', 'accept', 'account', 'accuse', 'achieve', 'acquire', 'action', 'active', 'actual',
+            'adapt', 'address', 'admit', 'adopt', 'advance', 'advice', 'affect', 'afford', 'agency', 'agree',
+            'ahead', 'alert', 'alive', 'allow', 'almost', 'alone', 'along', 'already', 'alright', 'although',
+            'always', 'amazing', 'among', 'amount', 'analyze', 'ancient', 'another', 'answer', 'anxiety', 'anyone',
+            'anyway', 'apart', 'appear', 'apply', 'approach', 'approve', 'argue', 'around', 'arrange', 'arrive',
+            'article', 'artist', 'aspect', 'assess', 'assign', 'assist', 'assume', 'assure', 'attack', 'attempt',
+            'attend', 'attract', 'author', 'average', 'avoid', 'award', 'aware', 'balance', 'barrier', 'basic',
+            'battle', 'beauty', 'become', 'before', 'begin', 'behave', 'behind', 'believe', 'belong', 'benefit',
+            'beside', 'better', 'beyond', 'biology', 'bitter', 'blame', 'blanket', 'blood', 'border', 'bother',
+            'bottle', 'bottom', 'brain', 'branch', 'brave', 'bread', 'break', 'breathe', 'bridge', 'brief',
+            'bright', 'bring', 'broad', 'brother', 'brown', 'brush', 'build', 'bunch', 'burden', 'business',
+            'button', 'cable', 'calculate', 'camera', 'campaign', 'cancel', 'cancer', 'candidate', 'capacity', 'capital',
+            'captain', 'capture', 'carbon', 'career', 'careful', 'carry', 'catch', 'category', 'cause', 'celebrate',
+            'center', 'central', 'century', 'certain', 'challenge', 'chamber', 'chance', 'change', 'chapter', 'character',
+            'charge', 'chart', 'check', 'chemical', 'chest', 'chief', 'child', 'choice', 'choose', 'church',
+            'citizen', 'civil', 'claim', 'class', 'classic', 'clean', 'clear', 'client', 'climate', 'climb',
+            'clock', 'close', 'cloud', 'coach', 'coast', 'coffee', 'cold', 'collect', 'college', 'color',
+            'combine', 'comfort', 'command', 'comment', 'commit', 'common', 'company', 'compare', 'compete', 'complain',
+            'complete', 'complex', 'compose', 'concept', 'concern', 'concert', 'conduct', 'confirm', 'conflict', 'connect',
+            'consent', 'consider', 'consist', 'constant', 'construct', 'contact', 'contain', 'content', 'contest', 'context',
+            'continue', 'contract', 'control', 'convert', 'convince', 'cookie', 'corner', 'correct', 'cost', 'could',
+            'count', 'country', 'couple', 'course', 'court', 'cover', 'craft', 'crash', 'create', 'credit',
+            'crime', 'crisis', 'critic', 'cross', 'crowd', 'crucial', 'crystal', 'culture', 'current', 'custom',
+            'cycle', 'daily', 'dance', 'danger', 'dark', 'data', 'daughter', 'day', 'dead', 'deal',
+            'debate', 'debt', 'decade', 'decide', 'declare', 'decline', 'deep', 'defend', 'define', 'degree',
+            'delay', 'deliver', 'demand', 'deny', 'depend', 'depth', 'describe', 'design', 'desire', 'desk',
+            'destroy', 'detail', 'detect', 'develop', 'device', 'devote', 'diamond', 'differ', 'difficult', 'digital',
+            'dinner', 'direct', 'discover', 'discuss', 'disease', 'display', 'dispute', 'distance', 'distant', 'distinct',
+            'disturb', 'divide', 'divorce', 'doctor', 'document', 'dollar', 'domain', 'double', 'doubt', 'down',
+            'draft', 'drag', 'drama', 'draw', 'dream', 'dress', 'drink', 'drive', 'drop', 'drug',
+            'during', 'dust', 'duty', 'each', 'early', 'earn', 'earth', 'easily', 'east', 'easy',
+            'eat', 'economic', 'economy', 'edge', 'edit', 'educate', 'effect', 'effort', 'eight', 'either',
+            'elect', 'electric', 'element', 'else', 'emerge', 'emotion', 'employ', 'empty', 'enable', 'encounter',
+            'end', 'energy', 'enforce', 'engage', 'engine', 'enhance', 'enjoy', 'enormous', 'enough', 'ensure',
+            'enter', 'entire', 'entry', 'envelope', 'episode', 'equal', 'equip', 'error', 'escape', 'essay',
+            'essence', 'estate', 'estimate', 'etc', 'ethnic', 'evaluate', 'even', 'evening', 'event', 'every',
+            'evidence', 'evil', 'evolve', 'exact', 'examine', 'example', 'exceed', 'except', 'exchange', 'excite',
+            'exclude', 'excuse', 'execute', 'exercise', 'exhibit', 'exist', 'expand', 'expect', 'expense', 'expert',
+            'explain', 'explore', 'expose', 'express', 'extend', 'extent', 'external', 'extra', 'extreme', 'eye',
+            'fabric', 'face', 'factor', 'fail', 'faint', 'fair', 'faith', 'fall', 'false', 'family',
+            'famous', 'fan', 'fantasy', 'far', 'farm', 'fashion', 'fast', 'fat', 'father', 'fault',
+            'favor', 'fear', 'feature', 'federal', 'fee', 'feed', 'feel', 'female', 'fence', 'festival',
+            'few', 'fiber', 'fiction', 'field', 'fifteen', 'fifth', 'fifty', 'fight', 'figure', 'file',
+            'fill', 'film', 'final', 'finance', 'find', 'fine', 'finger', 'finish', 'fire', 'firm',
+            'first', 'fish', 'fit', 'five', 'fix', 'flag', 'flame', 'flat', 'flavor', 'flee',
+            'flesh', 'flight', 'float', 'floor', 'flow', 'flower', 'fly', 'focus', 'fold', 'folk',
+            'follow', 'food', 'foot', 'force', 'foreign', 'forest', 'forget', 'form', 'formal', 'format',
+            'former', 'forward', 'foundation', 'four', 'fourth', 'frame', 'framework', 'free', 'freedom', 'freeze',
+            'frequent', 'fresh', 'friend', 'from', 'front', 'frozen', 'fruit', 'fuel', 'full', 'fun',
+            'function', 'fund', 'funny', 'future', 'gain', 'galaxy', 'gallery', 'game', 'gang', 'gap',
+            'garage', 'garden', 'gas', 'gate', 'gather', 'gaze', 'gear', 'gender', 'gene', 'general',
+            'generate', 'genetic', 'gentle', 'giant', 'gift', 'girl', 'give', 'glad', 'glance', 'glass',
+            'global', 'glove', 'go', 'goal', 'god', 'gold', 'good', 'govern', 'grab', 'grade',
+            'gradual', 'grain', 'grand', 'grant', 'grass', 'grave', 'great', 'green', 'greet', 'grey',
+            'grind', 'grip', 'gross', 'ground', 'group', 'grow', 'guard', 'guess', 'guest', 'guide',
+            'guilt', 'guitar', 'gun', 'guy', 'habit', 'hair', 'half', 'hall', 'hand', 'handle',
+            'hang', 'happen', 'happy', 'hard', 'harm', 'hat', 'hate', 'have', 'he', 'head',
+            'heal', 'health', 'hear', 'heart', 'heat', 'heaven', 'heavy', 'height', 'hello', 'help',
+            'hence', 'her', 'here', 'hero', 'herself', 'hey', 'hi', 'hide', 'high', 'highlight',
+            'highway', 'hill', 'him', 'himself', 'hip', 'hire', 'his', 'history', 'hit', 'hold',
+            'hole', 'holiday', 'holy', 'home', 'honest', 'honey', 'honor', 'hope', 'horizon', 'horror',
+            'horse', 'hospital', 'host', 'hot', 'hotel', 'hour', 'house', 'how', 'however', 'huge',
+            'human', 'humor', 'hundred', 'hungry', 'hunt', 'hurry', 'hurt', 'husband', 'ice', 'icon',
+            'idea', 'identify', 'if', 'ignore', 'ill', 'illegal', 'illness', 'image', 'imagine', 'impact',
+            'implement', 'imply', 'import', 'impress', 'improve', 'in', 'inch', 'include', 'income', 'increase',
+            'indeed', 'index', 'indicate', 'industry', 'infant', 'infect', 'inform', 'initial', 'initiate', 'injury',
+            'inner', 'innocent', 'input', 'inquiry', 'insect', 'inside', 'insight', 'insist', 'inspire', 'install',
+            'instance', 'instead', 'instruct', 'insure', 'intend', 'intense', 'interest', 'internal', 'internet', 'interpret',
+            'interval', 'interview', 'into', 'introduce', 'invade', 'invent', 'invest', 'invite', 'involve', 'iron',
+            'island', 'isolate', 'issue', 'it', 'item', 'its', 'itself', 'jacket', 'jail', 'jet',
+            'job', 'join', 'joint', 'joke', 'journal', 'journey', 'joy', 'judge', 'jump', 'junior',
+            'jury', 'just', 'justice', 'justify', 'keep', 'key', 'kick', 'kid', 'kill', 'kind',
+            'king', 'kiss', 'kitchen', 'knee', 'knife', 'knock', 'know', 'knowledge', 'lab', 'label',
+            'labor', 'lack', 'lady', 'lake', 'land', 'landscape', 'language', 'lap', 'large', 'last',
+            'late', 'later', 'laugh', 'launch', 'law', 'lawn', 'lawyer', 'lay', 'layer', 'lead',
+            'leader', 'leaf', 'league', 'lean', 'learn', 'least', 'leather', 'leave', 'lecture', 'left',
+            'leg', 'legacy', 'legal', 'legend', 'lemon', 'length', 'less', 'lesson', 'let', 'letter',
+            'level', 'liberal', 'library', 'license', 'lie', 'life', 'lift', 'light', 'like', 'likely',
+            'limit', 'line', 'link', 'lip', 'list', 'listen', 'literary', 'little', 'live', 'load',
+            'loan', 'local', 'locate', 'long', 'look', 'loose', 'lose', 'loss', 'lot', 'loud',
+            'love', 'low', 'lower', 'luck', 'lunch', 'machine', 'mad', 'magazine', 'mail', 'main',
+            'maintain', 'major', 'make', 'male', 'mall', 'man', 'manage', 'manner', 'many', 'map',
+            'march', 'mark', 'market', 'marry', 'mask', 'mass', 'master', 'match', 'material', 'math',
+            'matter', 'may', 'maybe', 'me', 'meal', 'mean', 'measure', 'meat', 'media', 'medical',
+            'meet', 'melt', 'member', 'memory', 'mental', 'mention', 'menu', 'mere', 'mess', 'message',
+            'metal', 'method', 'middle', 'might', 'mild', 'military', 'milk', 'million', 'mind', 'mine',
+            'minister', 'minor', 'minute', 'mirror', 'miss', 'mission', 'mistake', 'mix', 'mixture', 'mobile',
+            'model', 'modern', 'moment', 'money', 'monitor', 'month', 'mood', 'moon', 'moral', 'more',
+            'morning', 'most', 'mother', 'motion', 'motor', 'mountain', 'mouse', 'mouth', 'move', 'movie',
+            'much', 'multiple', 'murder', 'muscle', 'museum', 'music', 'must', 'mutual', 'my', 'myself',
+            'mystery', 'myth', 'naked', 'name', 'narrate', 'narrow', 'nation', 'native', 'natural', 'nature',
+            'near', 'neat', 'neck', 'need', 'negative', 'neighbor', 'neither', 'nerve', 'nervous', 'net',
+            'network', 'never', 'new', 'news', 'next', 'nice', 'night', 'no', 'nobody', 'noise',
+            'none', 'nor', 'normal', 'north', 'nose', 'not', 'note', 'nothing', 'notice', 'notion',
+            'novel', 'now', 'nowhere', 'nuclear', 'number', 'numerous', 'nurse', 'nut', 'object', 'observe',
+            'obtain', 'obvious', 'occur', 'ocean', 'odd', 'of', 'off', 'offend', 'offer', 'office',
+            'officer', 'official', 'often', 'oh', 'oil', 'ok', 'old', 'on', 'once', 'one',
+            'online', 'only', 'onto', 'open', 'operate', 'opinion', 'opponent', 'oppose', 'option', 'or',
+            'orange', 'order', 'ordinary', 'organ', 'organic', 'origin', 'other', 'ought', 'our', 'ourselves',
+            'out', 'outcome', 'outside', 'oven', 'over', 'overall', 'owe', 'own', 'owner', 'pace',
+            'pack', 'package', 'page', 'pain', 'paint', 'pair', 'pale', 'panel', 'pant', 'paper',
+            'parent', 'park', 'part', 'partner', 'party', 'pass', 'passage', 'past', 'patch', 'path',
+            'patient', 'pattern', 'pause', 'pay', 'peace', 'peak', 'peer', 'pen', 'penalty', 'people',
+            'pepper', 'per', 'perceive', 'percent', 'perfect', 'perform', 'period', 'permit', 'person', 'phase',
+            'phone', 'photo', 'phrase', 'physical', 'piano', 'pick', 'picture', 'pie', 'piece', 'pile',
+            'pilot', 'pine', 'pink', 'pipe', 'pitch', 'place', 'plan', 'plane', 'planet', 'plant',
+            'plastic', 'plate', 'platform', 'play', 'player', 'please', 'pleasure', 'plenty', 'plot', 'plus',
+            'pm', 'pocket', 'poem', 'poet', 'poetry', 'point', 'pole', 'police', 'policy', 'political',
+            'politics', 'poll', 'pollution', 'pool', 'poor', 'pop', 'popular', 'port', 'pose', 'position',
+            'positive', 'possess', 'possible', 'post', 'pot', 'potato', 'potential', 'pound', 'pour', 'poverty',
+            'power', 'practice', 'praise', 'pray', 'predict', 'prefer', 'prepare', 'presence', 'present', 'preserve',
+            'press', 'pressure', 'pretend', 'pretty', 'prevent', 'previous', 'price', 'pride', 'priest', 'primary',
+            'prime', 'print', 'prior', 'priority', 'prison', 'private', 'prize', 'probably', 'problem', 'proceed',
+            'process', 'produce', 'product', 'profess', 'profile', 'profit', 'program', 'progress', 'project', 'promise',
+            'promote', 'prompt', 'proof', 'proper', 'propose', 'protect', 'protein', 'protest', 'proud', 'prove',
+            'provide', 'public', 'pull', 'pump', 'punish', 'purchase', 'pure', 'purple', 'purpose', 'push',
+            'put', 'qualify', 'quality', 'quarter', 'queen', 'question', 'quick', 'quiet', 'quit', 'quite',
+            'quote', 'race', 'racial', 'radical', 'radio', 'rail', 'rain', 'raise', 'range', 'rank',
+            'rapid', 'rare', 'rate', 'rather', 'rating', 'ratio', 'raw', 'reach', 'react', 'read',
+            'ready', 'real', 'reality', 'realize', 'really', 'reason', 'rebel', 'recall', 'receive', 'recent',
+            'recipe', 'recognize', 'recommend', 'record', 'recover', 'recruit', 'red', 'reduce', 'refer', 'reflect',
+            'reform', 'refuse', 'regard', 'regime', 'region', 'register', 'regret', 'regular', 'reinforce', 'reject',
+            'relate', 'release', 'relevant', 'relief', 'religion', 'rely', 'remain', 'remember', 'remind', 'remote',
+            'remove', 'rent', 'repair', 'repeat', 'replace', 'reply', 'report', 'represent', 'request', 'require',
+            'rescue', 'research', 'resemble', 'reserve', 'reside', 'resist', 'resolve', 'resort', 'resource', 'respect',
+            'respond', 'rest', 'restore', 'result', 'retain', 'retire', 'return', 'reveal', 'revenue', 'review',
+            'revolution', 'rhythm', 'rice', 'rich', 'rid', 'ride', 'right', 'ring', 'rise', 'risk',
+            'river', 'road', 'rock', 'role', 'roll', 'romantic', 'roof', 'room', 'root', 'rope',
+            'rose', 'rough', 'round', 'route', 'routine', 'row', 'royal', 'rub', 'rude', 'rule',
+            'run', 'rural', 'rush', 'Russian', 'sacred', 'sad', 'safe', 'safety', 'sail', 'sake',
+            'salad', 'salary', 'sale', 'salt', 'same', 'sample', 'sanction', 'sand', 'satellite', 'satisfy',
+            'save', 'say', 'scale', 'scandal', 'scare', 'scenario', 'scene', 'schedule', 'scheme', 'school',
+            'science', 'scope', 'score', 'scream', 'screen', 'script', 'sea', 'search', 'season', 'seat',
+            'second', 'secret', 'section', 'sector', 'secure', 'see', 'seed', 'seek', 'seem', 'seize',
+            'select', 'self', 'sell', 'Senate', 'send', 'senior', 'sense', 'sensitive', 'sentence', 'separate',
+            'sequence', 'series', 'serious', 'serve', 'service', 'session', 'set', 'setting', 'settle', 'seven',
+            'several', 'severe', 'sex', 'sexual', 'shade', 'shadow', 'shake', 'shall', 'shape', 'share',
+            'sharp', 'she', 'sheet', 'shelf', 'shell', 'shelter', 'shift', 'shine', 'ship', 'shirt',
+            'shock', 'shoe', 'shoot', 'shop', 'short', 'shot', 'should', 'shoulder', 'shout', 'show',
+            'shower', 'shrug', 'shut', 'sick', 'side', 'sigh', 'sign', 'signal', 'silence', 'silent',
+            'silver', 'similar', 'simple', 'simply', 'sin', 'since', 'sing', 'single', 'sink', 'sir',
+            'sister', 'sit', 'site', 'situation', 'six', 'size', 'ski', 'skill', 'skin', 'sky',
+            'slave', 'sleep', 'slice', 'slide', 'slight', 'slip', 'slow', 'small', 'smart', 'smell',
+            'smile', 'smoke', 'smooth', 'snap', 'snow', 'so', 'so-called', 'soap', 'soccer', 'social',
+            'society', 'soft', 'software', 'soil', 'solar', 'soldier', 'solid', 'solution', 'solve', 'some',
+            'somebody', 'somehow', 'someone', 'something', 'sometimes', 'somewhat', 'somewhere', 'son', 'song', 'soon',
+            'sorry', 'sort', 'soul', 'sound', 'soup', 'source', 'south', 'space', 'speak', 'special',
+            'specific', 'speech', 'speed', 'spend', 'sphere', 'spill', 'spin', 'spirit', 'spiritual', 'split',
+            'spokesman', 'sport', 'spot', 'spread', 'spring', 'spy', 'square', 'squeeze', 'stability', 'stable',
+            'staff', 'stage', 'stair', 'stake', 'stand', 'standard', 'standing', 'star', 'stare', 'start',
+            'state', 'statement', 'station', 'status', 'stay', 'steady', 'steal', 'steel', 'step', 'stick',
+            'still', 'stir', 'stock', 'stomach', 'stone', 'stop', 'storage', 'store', 'storm', 'story',
+            'straight', 'strange', 'strategy', 'stream', 'street', 'strength', 'stress', 'stretch', 'strike', 'string',
+            'strip', 'stroke', 'strong', 'structure', 'struggle', 'student', 'studio', 'study', 'stuff', 'stupid',
+            'style', 'subject', 'submit', 'subtle', 'suburb', 'succeed', 'success', 'such', 'sudden', 'sue',
+            'suffer', 'sugar', 'suggest', 'suicide', 'suit', 'summer', 'sun', 'super', 'supply', 'support',
+            'suppose', 'sure', 'surface', 'surgery', 'surprise', 'surround', 'survey', 'survive', 'suspect', 'sustain',
+            'swear', 'sweep', 'sweet', 'swim', 'swing', 'switch', 'symbol', 'symptom', 'system', 'table',
+            'tackle', 'tactic', 'tail', 'take', 'tale', 'talent', 'talk', 'tall', 'tank', 'tap',
+            'tape', 'target', 'task', 'taste', 'tax', 'tea', 'teach', 'team', 'tear', 'technical',
+            'technique', 'technology', 'teen', 'telephone', 'television', 'tell', 'temperature', 'temporary', 'ten', 'tend',
+            'tennis', 'tension', 'tent', 'term', 'terrible', 'territory', 'terror', 'test', 'testify', 'text',
+            'than', 'thank', 'that', 'the', 'theater', 'their', 'them', 'theme', 'themselves', 'then',
+            'theory', 'therapy', 'there', 'therefore', 'these', 'they', 'thick', 'thin', 'thing', 'think',
+            'third', 'thirty', 'this', 'those', 'though', 'thought', 'thousand', 'threat', 'three', 'throat',
+            'through', 'throw', 'thus', 'ticket', 'tie', 'tight', 'time', 'tiny', 'tip', 'tire',
+            'tissue', 'title', 'to', 'tobacco', 'today', 'toe', 'together', 'tomato', 'tomorrow', 'tone',
+            'tongue', 'tonight', 'too', 'tool', 'tooth', 'top', 'topic', 'toss', 'total', 'touch',
+            'tough', 'tour', 'toward', 'tower', 'town', 'toy', 'trace', 'track', 'trade', 'tradition',
+            'traffic', 'tragedy', 'trail', 'train', 'transfer', 'transform', 'transit', 'translate', 'transport', 'trap',
+            'travel', 'treat', 'treatment', 'treaty', 'tree', 'tremendous', 'trend', 'trial', 'tribe', 'trick',
+            'trip', 'troop', 'trouble', 'truck', 'true', 'truly', 'trust', 'truth', 'try', 'tube',
+            'tunnel', 'turn', 'TV', 'twelve', 'twenty', 'twice', 'twin', 'two', 'type', 'typical',
+            'ugly', 'ultimate', 'unable', 'uncle', 'under', 'undergo', 'understand', 'undertake', 'uniform', 'union',
+            'unique', 'unit', 'unite', 'universal', 'universe', 'university', 'unknown', 'unless', 'unlike', 'unlikely',
+            'until', 'unusual', 'up', 'upon', 'upper', 'urban', 'urge', 'us', 'use', 'useful',
+            'user', 'usual', 'utility', 'vacation', 'valley', 'valuable', 'value', 'van', 'variation', 'variety',
+            'various', 'vary', 'vast', 'vegetable', 'vehicle', 'venture', 'version', 'versus', 'very', 'vessel',
+            'veteran', 'via', 'victim', 'victory', 'video', 'view', 'viewer', 'village', 'violate', 'violence',
+            'virtual', 'virtue', 'virus', 'visible', 'vision', 'visit', 'visual', 'vital', 'voice', 'volume',
+            'volunteer', 'vote', 'voter', 'vs', 'vulnerable', 'wage', 'wait', 'wake', 'walk', 'wall',
+            'wander', 'want', 'war', 'warm', 'warn', 'wash', 'waste', 'watch', 'water', 'wave',
+            'way', 'we', 'weak', 'wealth', 'weapon', 'wear', 'weather', 'wedding', 'week', 'weekend',
+            'weigh', 'weird', 'welcome', 'well', 'west', 'western', 'wet', 'what', 'whatever', 'wheel',
+            'when', 'whenever', 'where', 'whereas', 'whether', 'which', 'while', 'whisper', 'white', 'who',
+            'whole', 'whom', 'whose', 'why', 'wide', 'wife', 'wild', 'will', 'win', 'wind',
+            'window', 'wine', 'wing', 'winner', 'winter', 'wipe', 'wire', 'wisdom', 'wise', 'wish',
+            'with', 'withdraw', 'within', 'without', 'witness', 'woman', 'wonder', 'wood', 'word', 'work',
+            'worker', 'world', 'worry', 'worth', 'would', 'wound', 'wrap', 'write', 'writer', 'wrong',
+            'yard', 'yeah', 'year', 'yell', 'yellow', 'yes', 'yesterday', 'yet', 'yield', 'you',
+            'young', 'your', 'yours', 'yourself', 'youth', 'zone'
+        ];
+        
+        // --- Game State ---
+        let score = 0;
+        let level = 1;
+        let fallingWords = [];
+        let gameSpeed = 0.8; // ADJUSTED: Slower initial speed
+        let spawnRate = 2200; // ADJUSTED: Slower initial spawn rate
+        let gameOver = true;
+        let gameLoopId;
+        let wordSpawnerId;
+        let levelUpScore = 20;
+
+        // --- Game Logic ---
+
+        function resizeCanvas() {
+            const container = document.querySelector('.game-container');
+            const maxWidth = 896; // Corresponds to max-w-2xl
+            const availableWidth = container.clientWidth - 32; // p-4
+            canvas.width = Math.min(maxWidth, availableWidth);
+            canvas.height = window.innerHeight * 0.5;
+        }
+
+        function getRandomWord() {
+            return wordList[Math.floor(Math.random() * wordList.length)];
+        }
+
+        function spawnWord() {
+            if (gameOver) return;
+            const text = getRandomWord();
+            const x = Math.random() * (canvas.width - ctx.measureText(text).width - 20) + 10;
+            // ADJUSTED: Less random speed variation
+            fallingWords.push({ text, x, y: 0, speed: gameSpeed + Math.random() * 0.2 });
+        }
+
+        function updateGame() {
+            if (gameOver) return;
+
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Update and draw words
+            let wordHitBottom = false;
+            for (let i = fallingWords.length - 1; i >= 0; i--) {
+                const word = fallingWords[i];
+                word.y += word.speed;
+
+                // Draw word
+                ctx.fillStyle = '#90cdf4'; // text-blue-300
+                ctx.font = '20px Inter';
+                ctx.fillText(word.text, word.x, word.y);
+
+                // Check for collision with bottom
+                if (word.y > canvas.height) {
+                    wordHitBottom = true;
+                    break;
+                }
+            }
+
+            if (wordHitBottom) {
+                endGame();
+            } else {
+                gameLoopId = requestAnimationFrame(updateGame);
+            }
+        }
+
+        function checkInput() {
+            const typedValue = inputEl.value.trim();
+            if (typedValue === '') return;
+
+            const wordIndex = fallingWords.findIndex(word => word.text === typedValue);
+
+            if (wordIndex !== -1) {
+                // Word matched
+                fallingWords.splice(wordIndex, 1);
+                score += 1;
+                scoreEl.textContent = score;
+                inputEl.value = '';
+
+                // Check for level up
+                if (score >= levelUpScore) {
+                    level++;
+                    levelEl.textContent = level;
+                    gameSpeed += 0.15; // ADJUSTED: Slower speed increase per level
+                    spawnRate = Math.max(700, spawnRate - 100); // ADJUSTED: Slower spawn rate decrease
+                    levelUpScore += (20 + level * 5); // Next level requires more points
+                    
+                    // Restart spawner with new rate
+                    clearInterval(wordSpawnerId);
+                    wordSpawnerId = setInterval(spawnWord, spawnRate);
+                }
+            }
+        }
+
+        function startGame() {
+            // Reset state
+            score = 0;
+            level = 1;
+            gameSpeed = 0.8; // ADJUSTED: Reset to new initial speed
+            spawnRate = 2200; // ADJUSTED: Reset to new initial spawn rate
+            levelUpScore = 20;
+            fallingWords = [];
+            gameOver = false;
+            
+            // Update UI
+            scoreEl.textContent = '0';
+            levelEl.textContent = '1';
+            inputEl.disabled = false;
+            inputEl.value = '';
+            inputEl.focus();
+            modal.style.display = 'none';
+
+            // Start game loops
+            wordSpawnerId = setInterval(spawnWord, spawnRate);
+            gameLoopId = requestAnimationFrame(updateGame);
+        }
+
+        function endGame() {
+            gameOver = true;
+            cancelAnimationFrame(gameLoopId);
+            clearInterval(wordSpawnerId);
+            
+            inputEl.disabled = true;
+
+            // Show modal
+            modalTitle.textContent = 'Game Over!';
+            modalText.textContent = 'You did great! Want to try again?';
+            finalScoreEl.innerHTML = `Final Score: <span class="text-green-400">${score}</span> | Level: <span class="text-yellow-400">${level}</span>`;
+            finalScoreEl.style.display = 'block';
+            startGameBtn.textContent = 'Restart Game';
+            modal.style.display = 'flex';
+        }
+
+        // --- Event Listeners ---
+        window.addEventListener('resize', resizeCanvas);
+        inputEl.addEventListener('input', checkInput);
+        startGameBtn.addEventListener('click', startGame);
+
+        // --- Initial Setup ---
+        resizeCanvas();
+        finalScoreEl.style.display = 'none';
+
+    </script>
+</body>
+</html>
